@@ -51,6 +51,7 @@ class MicroMeetAdapter(BasePlatformAdapter):
         self._watch_task: asyncio.Task | None = None
         self._drafts: dict[str, tuple[str, str, str | None, dict[str, Any] | None]] = {}
         self._draft_sequence = 0
+        self._recent_deliveries: dict[str, tuple[float, SendResult]] = {}
         self._stopping = False
 
     @property
@@ -109,6 +110,7 @@ class MicroMeetAdapter(BasePlatformAdapter):
             await asyncio.gather(watch_task, return_exceptions=True)
         await self.service.stop()
         self._drafts.clear()
+        self._recent_deliveries.clear()
         self._mark_disconnected()
 
     async def send(
@@ -169,6 +171,13 @@ class MicroMeetAdapter(BasePlatformAdapter):
         reply_to: str | None,
         metadata: dict[str, Any] | None,
     ) -> SendResult:
+        fingerprint = hashlib.sha256(
+            "\0".join([str(chat_id), content]).encode("utf-8")
+        ).hexdigest()
+        now = time.monotonic()
+        cached = self._recent_deliveries.get(fingerprint)
+        if cached and now - cached[0] <= 5.0:
+            return cached[1]
         command = ["post", str(chat_id), "--stdin"]
         if reply_to:
             command.extend(["--reply-to", str(reply_to)])
@@ -188,11 +197,19 @@ class MicroMeetAdapter(BasePlatformAdapter):
             )
         result = response.get("result") or {}
         message_id = result.get("id") or result.get("object_id")
-        return SendResult(
+        delivered = SendResult(
             success=True,
             message_id=str(message_id or ""),
             raw_response=response,
         )
+        self._recent_deliveries[fingerprint] = (now, delivered)
+        if len(self._recent_deliveries) > 64:
+            oldest = min(
+                self._recent_deliveries,
+                key=lambda key: self._recent_deliveries[key][0],
+            )
+            self._recent_deliveries.pop(oldest, None)
+        return delivered
 
     async def _watch_loop(self) -> None:
         try:

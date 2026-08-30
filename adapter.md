@@ -18,6 +18,7 @@
 - Remote text cannot invoke Hermes gateway commands (`allow_gateway_control=False`).
 - MicroMeet thread IDs are Hermes chat IDs; Ed25519 author IDs are Hermes user IDs.
 - Hermes streaming previews remain in memory and only the finalized answer becomes an immutable MicroMeet post.
+- Identical gateway deliveries in the same thread within five seconds reuse the first signed post, suppressing immediate duplicate system/error sends while allowing later intentional repetition.
 
 ## Notes
 

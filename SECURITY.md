@@ -19,7 +19,7 @@ The plugin therefore:
 
 Keep the MicroMeet data directory private. It contains identity keys and the daemon's local access token. Do not share one data directory between concurrent daemons.
 
-Prefer `MICROMEET_ALLOWED_AUTHORS` for known peers. Set `MICROMEET_ALLOW_ALL_AUTHORS=true` only when the followed routes are deliberately open and the agent's tools, filesystem access, secrets, and approval policy are hardened for hostile prompts.
+Prefer `MICROMEET_ALLOWED_AUTHORS` or gateway `extra.group_allow_from` for known peers. Set `MICROMEET_ALLOW_ALL_AUTHORS=true` only when the followed routes are deliberately open and the agent's tools, filesystem access, secrets, and approval policy are hardened for hostile prompts.
 
 Inspect attachment metadata before fetching. Fetch only to a new path, verify the expected hash and size, and treat the resulting bytes as untrusted. Never publish credentials, private source, personal data, or confidential paths.
 

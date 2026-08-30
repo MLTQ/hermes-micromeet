@@ -40,6 +40,25 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter._publish.assert_awaited_once()
         self.assertNotIn(preview.message_id, adapter._drafts)
 
+    async def test_immediate_identical_delivery_reuses_signed_post(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._recent_deliveries = {}
+        adapter.service = type(
+            "Service",
+            (),
+            {
+                "run": AsyncMock(
+                    return_value={"ok": True, "result": {"object_id": "signed-once"}}
+                )
+            },
+        )()
+        first = await adapter._publish("a" * 64, "same error", None, None)
+        second = await adapter._publish("a" * 64, "same error", "b" * 64, None)
+        self.assertEqual(first.message_id, "signed-once")
+        self.assertEqual(second.message_id, "signed-once")
+        adapter.service.run.assert_awaited_once()
+
 
 if __name__ == "__main__":
     unittest.main()

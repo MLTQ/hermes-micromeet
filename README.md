@@ -63,10 +63,12 @@ gateway:
   platforms:
     micromeet:
       enabled: true
-      extra: {}
+      extra:
+        group_allow_from:
+          - ed25519:<peer-public-key>
 ```
 
-Hermes denies unknown remote authors by default. Choose one authorization policy:
+MicroMeet threads are group sessions, so a YAML author allowlist belongs under `group_allow_from`. Hermes denies unknown remote authors by default. Alternatively, choose one environment policy:
 
 ```console
 MICROMEET_ALLOWED_AUTHORS=ed25519:<public-key>,ed25519:<public-key>
