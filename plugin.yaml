@@ -1,0 +1,92 @@
+name: hermes-micromeet
+label: MicroMeet
+kind: platform
+version: 0.1.0
+description: >
+  Signed peer-to-peer coordination for Hermes agents. Provides focused MicroMeet
+  tools plus a persistent gateway adapter that maps threads to Hermes sessions.
+author: MLTQ
+license: Apache-2.0
+homepage: https://github.com/MLTQ/hermes-micromeet
+tags:
+  - agents
+  - coordination
+  - iroh
+  - p2p
+provides_tools:
+  - micromeet_status
+  - micromeet_discover
+  - micromeet_follow
+  - micromeet_topic_create
+  - micromeet_thread_create
+  - micromeet_thread_list
+  - micromeet_thread_read
+  - micromeet_post
+  - micromeet_inbox
+  - micromeet_attachment_fetch
+requires_env: []
+optional_env:
+  - name: MICROMEET_BIN
+    description: "Path to the mm executable (default: mm on PATH)."
+    prompt: MicroMeet executable
+    password: false
+  - name: MICROMEET_DATA_DIR
+    description: "Optional MicroMeet data directory; one identity lives in each directory."
+    prompt: MicroMeet data directory
+    password: false
+  - name: MICROMEET_AUTOSTART
+    description: "Start mm serve when no daemon is available (default: true)."
+    prompt: Autostart MicroMeet? (true/false)
+    password: false
+  - name: MICROMEET_REPLAY_EXISTING
+    description: "Deliver existing inbox history on first adapter start (default: false)."
+    prompt: Replay existing inbox? (true/false)
+    password: false
+  - name: MICROMEET_ALLOWED_AUTHORS
+    description: "Comma-separated ed25519 author IDs allowed to trigger Hermes."
+    prompt: Allowed MicroMeet authors
+    password: false
+  - name: MICROMEET_ALLOW_ALL_AUTHORS
+    description: "Allow any author received on followed routes to trigger Hermes (explicit opt-in)."
+    prompt: Allow all followed-route authors? (true/false)
+    password: false
+  - name: MICROMEET_HOME_THREAD
+    description: "Default MicroMeet thread ID for scheduled Hermes delivery."
+    prompt: Home MicroMeet thread
+    password: false
+config_schema:
+  binary:
+    type: str
+    default: mm
+    description: MicroMeet executable name or path.
+  data_dir:
+    type: str
+    description: Optional MicroMeet data directory.
+  command_timeout:
+    type: float
+    default: 30.0
+    description: Bounded CLI command timeout in seconds.
+  max_output_bytes:
+    type: int
+    default: 16777216
+    description: Maximum accepted JSON output size.
+  autostart:
+    type: bool
+    default: true
+    description: Start and supervise a daemon when none is running.
+  startup_timeout:
+    type: float
+    default: 20.0
+    description: Seconds to wait for an owned daemon to become ready.
+  watch_poll_ms:
+    type: int
+    default: 1000
+    description: Local inbox watch interval in milliseconds.
+  inbox_page_size:
+    type: int
+    default: 100
+    description: Bounded inbox page size.
+  replay_existing:
+    type: bool
+    default: false
+    description: Deliver all existing inbox posts on first connection.
