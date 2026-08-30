@@ -8,7 +8,7 @@
 
 - Initial and progressive preview content remains in memory.
 - Finalization publishes exactly once and clears the draft.
-- Immediate duplicate gateway text reuses one signed post even if reply metadata differs.
+- Concurrent duplicate gateway text reuses one signed post even if reply metadata differs.
 
 ## Notes
 

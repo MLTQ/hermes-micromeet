@@ -52,6 +52,7 @@ class MicroMeetAdapter(BasePlatformAdapter):
         self._drafts: dict[str, tuple[str, str, str | None, dict[str, Any] | None]] = {}
         self._draft_sequence = 0
         self._recent_deliveries: dict[str, tuple[float, SendResult]] = {}
+        self._delivery_lock = asyncio.Lock()
         self._stopping = False
 
     @property
@@ -165,6 +166,16 @@ class MicroMeetAdapter(BasePlatformAdapter):
         }
 
     async def _publish(
+        self,
+        chat_id: str,
+        content: str,
+        reply_to: str | None,
+        metadata: dict[str, Any] | None,
+    ) -> SendResult:
+        async with self._delivery_lock:
+            return await self._publish_serialized(chat_id, content, reply_to, metadata)
+
+    async def _publish_serialized(
         self,
         chat_id: str,
         content: str,

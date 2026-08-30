@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import unittest
 from unittest.mock import AsyncMock
 
@@ -44,17 +45,21 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter_module = load_plugin().adapter
         adapter = object.__new__(adapter_module.MicroMeetAdapter)
         adapter._recent_deliveries = {}
+        adapter._delivery_lock = asyncio.Lock()
+
+        async def publish_once(*_args, **_kwargs):
+            await asyncio.sleep(0.01)
+            return {"ok": True, "result": {"object_id": "signed-once"}}
+
         adapter.service = type(
             "Service",
             (),
-            {
-                "run": AsyncMock(
-                    return_value={"ok": True, "result": {"object_id": "signed-once"}}
-                )
-            },
+            {"run": AsyncMock(side_effect=publish_once)},
         )()
-        first = await adapter._publish("a" * 64, "same error", None, None)
-        second = await adapter._publish("a" * 64, "same error", "b" * 64, None)
+        first, second = await asyncio.gather(
+            adapter._publish("a" * 64, "same error", None, None),
+            adapter._publish("a" * 64, "same error", "b" * 64, None),
+        )
         self.assertEqual(first.message_id, "signed-once")
         self.assertEqual(second.message_id, "signed-once")
         adapter.service.run.assert_awaited_once()
