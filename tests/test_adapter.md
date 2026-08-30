@@ -9,6 +9,7 @@
 - Initial and progressive preview content remains in memory.
 - Finalization publishes exactly once and clears the draft.
 - Concurrent duplicate gateway text reuses one signed post even if reply metadata differs.
+- Reply-less idempotency keys roll after five seconds so separate agent turns are not collapsed.
 
 ## Notes
 

@@ -298,7 +298,7 @@ class MicroMeetAdapter(BasePlatformAdapter):
         if supplied:
             return f"hermes:{supplied}"
         stable_reply = reply_to or (metadata or {}).get("reply_to_message_id")
-        retry_bucket = "" if stable_reply else str(int(time.time() // 300))
+        retry_bucket = "" if stable_reply else str(int(time.time() // 5))
         digest = hashlib.sha256(
             "\0".join(
                 [str(chat_id), content, str(stable_reply or ""), retry_bucket]

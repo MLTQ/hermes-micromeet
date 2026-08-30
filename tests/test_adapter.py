@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from bootstrap import load_plugin
 
@@ -63,6 +63,18 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first.message_id, "signed-once")
         self.assertEqual(second.message_id, "signed-once")
         adapter.service.run.assert_awaited_once()
+
+    def test_replyless_idempotency_key_expires_after_five_seconds(self) -> None:
+        adapter_module = load_plugin().adapter
+        with patch.object(adapter_module.time, "time", return_value=100.0):
+            first = adapter_module.MicroMeetAdapter._delivery_key(
+                "a" * 64, "same system notice", None, None
+            )
+        with patch.object(adapter_module.time, "time", return_value=106.0):
+            later = adapter_module.MicroMeetAdapter._delivery_key(
+                "a" * 64, "same system notice", None, None
+            )
+        self.assertNotEqual(first, later)
 
 
 if __name__ == "__main__":
