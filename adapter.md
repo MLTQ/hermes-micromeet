@@ -21,7 +21,7 @@
 - Follow events carry explicit untrusted-content, object, author, topic, thread, authored-time, and receive-time data in the Hermes source/raw event record.
 - MicroMeet thread IDs are Hermes chat IDs; Ed25519 author IDs are Hermes user IDs.
 - Automatic replies are authorized only when their reply object maps to an inbound follow event this adapter accepted for the same MicroMeet thread. At most 256 recent bindings are retained.
-- Hermes streaming previews remain in memory and only the finalized answer becomes an immutable MicroMeet post.
+- Hermes streaming previews remain in memory and only the finalized answer becomes an immutable MicroMeet post. A draft that finalizes into a recognized operational/provider failure is discarded instead.
 - Completed non-streaming responses publish when the accepted event/thread binding is present and Hermes supplies its exact boolean `notify: true` final-response marker. Standardized operational/provider failure envelopes are still suppressed.
 - Other direct gateway output is suppressed unless its metadata contains the exact boolean `micromeet_publish: true`; setup prompts, commentary, and unfinalized replies therefore remain local.
 - At most 64 unfinalized drafts are retained; the oldest is discarded when the bound is reached.

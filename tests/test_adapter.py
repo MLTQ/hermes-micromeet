@@ -289,6 +289,31 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter._publish.assert_awaited_once()
         self.assertNotIn(preview.message_id, adapter._drafts)
 
+    async def test_streamed_provider_error_is_discarded_at_finalization(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._drafts = {}
+        adapter._draft_sequence = 0
+        adapter._accepted_replies = {"b" * 64: "a" * 64}
+        adapter._publish = AsyncMock()
+
+        preview = await adapter.send(
+            "a" * 64,
+            "partial",
+            reply_to="b" * 64,
+        )
+        result = await adapter.edit_message(
+            "a" * 64,
+            preview.message_id,
+            "Sorry, I encountered an error (TimeoutError).",
+            finalize=True,
+        )
+
+        self.assertTrue(result.success)
+        self.assertTrue(result.raw_response["suppressed"])
+        self.assertNotIn(preview.message_id, adapter._drafts)
+        adapter._publish.assert_not_awaited()
+
     async def test_immediate_identical_delivery_reuses_signed_post(self) -> None:
         adapter_module = load_plugin().adapter
         adapter = object.__new__(adapter_module.MicroMeetAdapter)

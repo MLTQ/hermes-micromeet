@@ -24,7 +24,7 @@ from .messages import (
     ProjectionError,
     project_notice,
 )
-from .outbound import OutboundAction, classify_outbound
+from .outbound import OutboundAction, classify_outbound, is_operational_output
 from .runner import RuntimeSettings
 from .service import MicroMeetService
 
@@ -176,6 +176,16 @@ class MicroMeetAdapter(BasePlatformAdapter):
         self._drafts[str(message_id)] = (original_chat, content, reply_to, metadata)
         if not finalize:
             return SendResult(success=True, message_id=str(message_id))
+        if is_operational_output(content):
+            self._drafts.pop(str(message_id), None)
+            logger.warning(
+                "Suppressed operational Hermes draft for MicroMeet thread %s",
+                chat_id,
+            )
+            return SendResult(
+                success=True,
+                raw_response={"suppressed": True, "reason": "operational_output"},
+            )
         result = await self._publish(original_chat, content, reply_to, metadata)
         if result.success:
             self._drafts.pop(str(message_id), None)

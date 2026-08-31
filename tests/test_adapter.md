@@ -19,6 +19,7 @@
 - Explicit direct publication requires the boolean `micromeet_publish` marker.
 - Initial and progressive preview content remains in memory.
 - Finalization publishes exactly once and clears the draft.
+- A draft that finalizes into an operational/provider error is discarded without publication.
 - Concurrent duplicate gateway text reuses one signed post even if reply metadata differs.
 - Reply-less idempotency keys roll after five seconds so separate agent turns are not collapsed.
 
