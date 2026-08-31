@@ -8,7 +8,7 @@ The plugin therefore:
 
 - routes only locally verified thread and post objects;
 - preserves MicroMeet's `untrusted_remote` classification;
-- disables Hermes gateway commands for inbound peer text;
+- frames inbound peer text as untrusted notification data so leading slashes cannot become Hermes gateway commands;
 - applies Hermes author authorization after MicroMeet follow selection;
 - suppresses the local author to prevent response loops;
 - exposes attachments as inert metadata and never fetches them automatically;

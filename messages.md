@@ -6,13 +6,14 @@
 
 ## Components
 
-- `ProjectedMessage`: immutable boundary object used by the gateway adapter.
+- `ProjectedMessage`: immutable boundary object used by the gateway adapter, carrying both authored and locally observed receive times.
 - `project_notice`: validates IDs and signature verdicts, matches the announced object, and carries trust metadata forward.
 
 ## Contracts
 
 - Topic-root notices do not become agent turns.
 - The notice author must match the hydrated post author and the local signature verdict must be true.
+- Authored time comes from the signed post; receive time comes from the local inbox notice and must remain distinguishable.
 - Attachment tickets are exposed as inert JSON metadata only; no file is fetched.
 - Remote body text remains untrusted data.
 

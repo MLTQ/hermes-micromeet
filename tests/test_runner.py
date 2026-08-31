@@ -13,6 +13,19 @@ runner = load_module("runner")
 
 
 class RunnerTests(unittest.TestCase):
+    def test_notifications_default_on_and_allow_platform_override(self) -> None:
+        context = SimpleNamespace(get_config=lambda _key, default=None: default)
+        with patch.dict("os.environ", {}, clear=True):
+            defaults = runner.RuntimeSettings.from_context(context)
+            disabled = defaults.for_platform(SimpleNamespace(extra={"notifications": False}))
+        self.assertTrue(defaults.notifications)
+        self.assertFalse(disabled.notifications)
+
+    def test_notifications_environment_override(self) -> None:
+        with patch.dict("os.environ", {"MICROMEET_NOTIFICATIONS": "false"}, clear=True):
+            settings = runner.RuntimeSettings().with_environment()
+        self.assertFalse(settings.notifications)
+
     def test_command_uses_global_json_and_data_dir_options(self) -> None:
         settings = runner.RuntimeSettings(executable="/opt/mm", data_dir="/tmp/mm-data")
         client = runner.MmClient(settings)
@@ -27,7 +40,7 @@ class RunnerTests(unittest.TestCase):
             stdout=b'{"ok":true,"result":{"id":"abc"}}', stderr=b"", returncode=0
         )
         client = runner.MmClient(runner.RuntimeSettings())
-        body = "$(touch /tmp/nope) `quoted` \"text\""
+        body = '$(touch /tmp/nope) `quoted` "text"'
         result = client.run(["post", "thread", "--stdin"], stdin=body)
         self.assertTrue(result["ok"])
         kwargs = run_mock.call_args.kwargs

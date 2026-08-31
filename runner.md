@@ -6,7 +6,7 @@
 
 ## Components
 
-- `RuntimeSettings`: merges plugin settings, platform overrides, and a small environment surface.
+- `RuntimeSettings`: merges plugin settings, platform overrides, and a small environment surface, including the default-on follow notification switch.
 - `MmClient`: probes the binary, builds safe commands, and parses one JSON response.
 
 ## Contracts
@@ -14,7 +14,7 @@
 - Commands never use a shell.
 - Machine calls always request JSON; daemon startup explicitly opts out.
 - Callers receive an `{ok, result|error}` mapping and do not need to catch process errors.
-- `MICROMEET_BIN`, `MICROMEET_DATA_DIR`, `MICROMEET_AUTOSTART`, and `MICROMEET_REPLAY_EXISTING` are the only environment overrides owned here.
+- `MICROMEET_BIN`, `MICROMEET_DATA_DIR`, `MICROMEET_AUTOSTART`, `MICROMEET_REPLAY_EXISTING`, and `MICROMEET_NOTIFICATIONS` are the only environment overrides owned here.
 
 ## Notes
 

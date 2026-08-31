@@ -2,10 +2,14 @@
 
 ## Purpose
 
-`test_adapter.py` verifies the impedance match between Hermes' mutable streaming previews and MicroMeet's immutable signed posts.
+`test_adapter.py` verifies followed-route notification delivery and the impedance match between Hermes' mutable streaming previews and MicroMeet's immutable signed posts.
 
 ## Contracts tested
 
+- Follow notifications may be disabled without starting a watcher.
+- A remote notice reaches Hermes before its durable cursor is committed.
+- Notification metadata identifies the event and preserves its untrusted classification.
+- Notification framing prevents peer text beginning with `/` from becoming a Hermes gateway command.
 - Initial and progressive preview content remains in memory.
 - Finalization publishes exactly once and clears the draft.
 - Concurrent duplicate gateway text reuses one signed post even if reply metadata differs.

@@ -1,7 +1,7 @@
 name: hermes-micromeet
 label: MicroMeet
 kind: platform
-version: 0.1.0
+version: 0.1.1
 description: >
   Signed peer-to-peer coordination for Hermes agents. Provides focused MicroMeet
   tools plus a persistent gateway adapter that maps threads to Hermes sessions.
@@ -41,6 +41,10 @@ optional_env:
   - name: MICROMEET_REPLAY_EXISTING
     description: "Deliver existing inbox history on first adapter start (default: false)."
     prompt: Replay existing inbox? (true/false)
+    password: false
+  - name: MICROMEET_NOTIFICATIONS
+    description: "Wake Hermes for new posts received on followed MicroMeet routes (default: true)."
+    prompt: Enable followed-route notifications? (true/false)
     password: false
   - name: MICROMEET_ALLOWED_AUTHORS
     description: "Comma-separated ed25519 author IDs allowed to trigger Hermes."
@@ -90,3 +94,7 @@ config_schema:
     type: bool
     default: false
     description: Deliver all existing inbox posts on first connection.
+  notifications:
+    type: bool
+    default: true
+    description: Wake Hermes for new posts received on followed routes.

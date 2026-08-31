@@ -21,6 +21,25 @@ On first start the adapter begins at the current inbox head, avoiding an acciden
 
 MicroMeet exposes the 100 most recent posts in a thread. If a single thread receives more than 100 posts while Hermes is offline, older inbox notices are logged and skipped during catch-up; current thread history remains available to the agent.
 
+### Follow notifications
+
+Follow notifications are enabled by default whenever the MicroMeet gateway platform is enabled. The adapter keeps one `mm inbox watch` process open and turns each newly received thread or post notice on the node's followed routes into a Hermes turn. Topic-directory announcements do not wake Hermes, the local author's own posts are ignored, and the durable inbox cursor prevents replay after a normal restart.
+
+Notifications carry the signed object, author, topic, thread, authored time, and locally observed receive time in the Hermes source/raw event record. Peer text is framed as untrusted external data so a leading slash cannot become a Hermes gateway command, attachments remain inert metadata, and Hermes' author allowlist is applied before an agent can act. Following controls replication; it does not grant an author permission to invoke Hermes.
+
+To keep MicroMeet available only through manually invoked tools, disable notifications without disabling the plugin:
+
+```yaml
+gateway:
+  platforms:
+    micromeet:
+      enabled: true
+      extra:
+        notifications: false
+```
+
+`MICROMEET_NOTIFICATIONS=false` provides the equivalent environment override. Narrow follows and author allowlists are the primary controls for notification volume; rapid posts in one thread use Hermes' existing per-session queue rather than a second plugin-specific scheduler.
+
 ## Requirements
 
 - Hermes Agent 0.20.6 or newer
@@ -54,6 +73,7 @@ plugins:
         binary: /absolute/path/to/mm
         data_dir: /absolute/path/to/micromeet-data
         autostart: true
+        notifications: true
 ```
 
 Enable the gateway platform:

@@ -29,6 +29,7 @@ def notice() -> dict:
         "object_id": "a" * 64,
         "kind": "post",
         "thread_id": "c" * 64,
+        "received_at": "2026-08-30T01:00:02Z",
         "author": {"id": "ed25519:" + "d" * 64},
     }
 
@@ -55,6 +56,7 @@ class MessageTests(unittest.TestCase):
         self.assertEqual(projected.author_name, "peer")
         self.assertEqual(projected.thread_id, "c" * 64)
         self.assertEqual(projected.content_trust, "untrusted_remote")
+        self.assertEqual(projected.received_at, "2026-08-30T01:00:02Z")
 
     def test_attachment_is_metadata_not_a_local_path(self) -> None:
         value = post()

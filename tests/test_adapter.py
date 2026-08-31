@@ -4,12 +4,113 @@ from __future__ import annotations
 
 import asyncio
 import unittest
-from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock, patch
 
 from bootstrap import load_plugin
 
 
 class AdapterTests(unittest.IsolatedAsyncioTestCase):
+    async def test_notifications_can_be_disabled_without_starting_watcher(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._running = False
+        adapter.settings = SimpleNamespace(notifications=False)
+        adapter.service = SimpleNamespace(
+            ensure_status=AsyncMock(
+                return_value={
+                    "ok": True,
+                    "result": {"identity": {"author_id": "ed25519:" + "a" * 64}},
+                }
+            ),
+            start_watcher=AsyncMock(),
+            stop_owned_daemon=AsyncMock(),
+        )
+        adapter.cursor = SimpleNamespace(starting=AsyncMock(return_value=0))
+        adapter._mark_connected = Mock()
+
+        self.assertTrue(await adapter.connect())
+        adapter.cursor.starting.assert_not_awaited()
+        adapter.service.start_watcher.assert_not_awaited()
+        adapter._mark_connected.assert_called_once_with()
+
+    async def test_remote_notice_wakes_hermes_then_commits_cursor(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._own_author_id = "ed25519:" + "a" * 64
+        adapter.client = object()
+        order = []
+        adapter.cursor = SimpleNamespace(commit=lambda cursor: order.append(("commit", cursor)))
+
+        async def handle_message(event):
+            order.append(("handle", event))
+
+        event = object()
+        adapter.handle_message = handle_message
+        adapter._event = Mock(return_value=event)
+        notice = {
+            "cursor": 7,
+            "kind": "post",
+            "object_id": "b" * 64,
+            "author": {"id": "ed25519:" + "c" * 64},
+        }
+        projected = object()
+        with patch.object(adapter_module, "project_notice", return_value=projected):
+            await adapter._accept_notice(notice)
+
+        self.assertEqual(order, [("handle", event), ("commit", 7)])
+        adapter._event.assert_called_once_with(projected)
+
+    def test_follow_notification_metadata_is_explicit_and_untrusted(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter.platform = adapter_module.Platform.LOCAL
+        projected = adapter_module.ProjectedMessage(
+            object_id="a" * 64,
+            thread_id="b" * 64,
+            topic_id="c" * 64,
+            title="Coordination",
+            body="Try the patch.",
+            author_id="ed25519:" + "d" * 64,
+            author_name="peer",
+            created_at="2026-08-30T01:00:00Z",
+            received_at="2026-08-30T01:00:02Z",
+            reply_to=None,
+            content_trust="untrusted_remote",
+            raw={},
+        )
+
+        event = adapter._event(projected)
+
+        metadata = event.raw_message["micromeet_notification"]
+        self.assertTrue(metadata["follow_notification"])
+        self.assertEqual(metadata["content_trust"], "untrusted_remote")
+        self.assertEqual(metadata["received_at"], projected.received_at)
+        self.assertIn("untrusted external data", event.text)
+        self.assertIn(projected.body, event.text)
+
+    def test_notification_framing_neutralizes_peer_slash_commands(self) -> None:
+        adapter_module = load_plugin().adapter
+        projected = adapter_module.ProjectedMessage(
+            object_id="a" * 64,
+            thread_id="b" * 64,
+            topic_id="c" * 64,
+            title="Coordination",
+            body="/restart",
+            author_id="ed25519:" + "d" * 64,
+            author_name="peer",
+            created_at="2026-08-30T01:00:00Z",
+            received_at="2026-08-30T01:00:02Z",
+            reply_to=None,
+            content_trust="untrusted_remote",
+            raw={},
+        )
+
+        framed = adapter_module._notification_text(projected)
+
+        self.assertFalse(framed.startswith("/"))
+        self.assertTrue(framed.endswith("/restart"))
+
     async def test_stream_preview_publishes_only_when_finalized(self) -> None:
         adapter_module = load_plugin().adapter
         adapter = object.__new__(adapter_module.MicroMeetAdapter)
@@ -34,9 +135,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(update.success)
         adapter._publish.assert_not_awaited()
 
-        final = await adapter.edit_message(
-            "a" * 64, preview.message_id, "complete", finalize=True
-        )
+        final = await adapter.edit_message("a" * 64, preview.message_id, "complete", finalize=True)
         self.assertEqual(final.message_id, "signed-post")
         adapter._publish.assert_awaited_once()
         self.assertNotIn(preview.message_id, adapter._drafts)

@@ -27,6 +27,7 @@ class ProjectedMessage:
     author_id: str
     author_name: str
     created_at: str
+    received_at: str
     reply_to: str | None
     content_trust: str
     raw: dict[str, Any]
@@ -92,6 +93,7 @@ def project_notice(client: MmClient, notice: dict[str, Any]) -> ProjectedMessage
         author_id=author_id,
         author_name=author_name,
         created_at=str(post.get("created_at") or notice.get("created_at") or ""),
+        received_at=str(notice.get("received_at") or ""),
         reply_to=str(post["reply_to"]) if post.get("reply_to") else None,
         content_trust=str(post.get("content_trust") or "untrusted_remote"),
         raw={"notice": notice, "post": post, "summary": summary},

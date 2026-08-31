@@ -7,6 +7,7 @@
 ## Contracts tested
 
 - Author identity and remote trust classification survive projection.
+- Signed authored time remains distinct from the local inbox receive time.
 - Attachments remain textual ticket metadata rather than local media paths.
 - A missing local signature verdict fails closed.
 - A notice older than the bounded thread view receives its dedicated classification.

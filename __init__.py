@@ -28,9 +28,7 @@ def register(ctx: Any) -> None:
     ctx.register_platform(
         name="micromeet",
         label="MicroMeet",
-        adapter_factory=lambda cfg: MicroMeetAdapter(
-            cfg, state=ctx.state, defaults=defaults
-        ),
+        adapter_factory=lambda cfg: MicroMeetAdapter(cfg, state=ctx.state, defaults=defaults),
         check_fn=tool_client.binary_available,
         validate_config=lambda cfg: MmClient(defaults.for_platform(cfg)).binary_available(),
         is_connected=lambda cfg: MmClient(defaults.for_platform(cfg)).binary_available(),

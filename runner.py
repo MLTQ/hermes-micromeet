@@ -6,9 +6,10 @@ import json
 import os
 import shutil
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 
 def _as_bool(value: Any, default: bool) -> bool:
@@ -55,9 +56,10 @@ class RuntimeSettings:
     watch_poll_ms: int = 1_000
     inbox_page_size: int = 100
     replay_existing: bool = False
+    notifications: bool = True
 
     @classmethod
-    def from_context(cls, ctx: Any) -> "RuntimeSettings":
+    def from_context(cls, ctx: Any) -> RuntimeSettings:
         """Load namespaced plugin settings, with environment overrides."""
         get = ctx.get_config
         settings = cls(
@@ -75,20 +77,17 @@ class RuntimeSettings:
             watch_poll_ms=_as_int(get("watch_poll_ms", 1_000), 1_000, 100, 60_000),
             inbox_page_size=_as_int(get("inbox_page_size", 100), 100, 1, 100),
             replay_existing=_as_bool(get("replay_existing", False), False),
+            notifications=_as_bool(get("notifications", True), True),
         )
         return settings.with_environment()
 
-    def for_platform(self, config: Any) -> "RuntimeSettings":
+    def for_platform(self, config: Any) -> RuntimeSettings:
         """Apply gateway platform ``extra`` values, then environment values."""
         extra = getattr(config, "extra", {}) or {}
         updated = replace(
             self,
             executable=str(extra.get("binary", self.executable) or self.executable),
-            data_dir=(
-                str(extra["data_dir"])
-                if extra.get("data_dir")
-                else self.data_dir
-            ),
+            data_dir=(str(extra["data_dir"]) if extra.get("data_dir") else self.data_dir),
             command_timeout=_as_float(
                 extra.get("command_timeout"), self.command_timeout, 1.0, 300.0
             ),
@@ -96,28 +95,22 @@ class RuntimeSettings:
             startup_timeout=_as_float(
                 extra.get("startup_timeout"), self.startup_timeout, 1.0, 120.0
             ),
-            watch_poll_ms=_as_int(
-                extra.get("watch_poll_ms"), self.watch_poll_ms, 100, 60_000
-            ),
-            inbox_page_size=_as_int(
-                extra.get("inbox_page_size"), self.inbox_page_size, 1, 100
-            ),
-            replay_existing=_as_bool(
-                extra.get("replay_existing"), self.replay_existing
-            ),
+            watch_poll_ms=_as_int(extra.get("watch_poll_ms"), self.watch_poll_ms, 100, 60_000),
+            inbox_page_size=_as_int(extra.get("inbox_page_size"), self.inbox_page_size, 1, 100),
+            replay_existing=_as_bool(extra.get("replay_existing"), self.replay_existing),
+            notifications=_as_bool(extra.get("notifications"), self.notifications),
         )
         return updated.with_environment()
 
-    def with_environment(self) -> "RuntimeSettings":
+    def with_environment(self) -> RuntimeSettings:
         """Apply the small operator-facing environment override surface."""
         return replace(
             self,
             executable=os.getenv("MICROMEET_BIN") or self.executable,
             data_dir=os.getenv("MICROMEET_DATA_DIR") or self.data_dir,
             autostart=_as_bool(os.getenv("MICROMEET_AUTOSTART"), self.autostart),
-            replay_existing=_as_bool(
-                os.getenv("MICROMEET_REPLAY_EXISTING"), self.replay_existing
-            ),
+            replay_existing=_as_bool(os.getenv("MICROMEET_REPLAY_EXISTING"), self.replay_existing),
+            notifications=_as_bool(os.getenv("MICROMEET_NOTIFICATIONS"), self.notifications),
         )
 
 
@@ -156,8 +149,7 @@ class MmClient:
             completed = subprocess.run(
                 self.command(arguments),
                 input=stdin.encode("utf-8") if stdin is not None else None,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 check=False,
                 timeout=timeout or self.settings.command_timeout,
                 shell=False,
@@ -173,7 +165,10 @@ class MmClient:
             return self.failure("process_error", f"MicroMeet could not be started: {exc}")
 
         if len(completed.stdout) > self.settings.max_output_bytes:
-            return self.failure("output_too_large", "MicroMeet JSON output exceeded the configured limit")
+            return self.failure(
+                "output_too_large",
+                "MicroMeet JSON output exceeded the configured limit",
+            )
         stderr = completed.stderr[:8_192].decode("utf-8", errors="replace").strip()
         try:
             payload = json.loads(completed.stdout.decode("utf-8"))
@@ -181,10 +176,16 @@ class MmClient:
             detail = f"; stderr: {stderr}" if stderr else ""
             return self.failure("invalid_json", f"MicroMeet returned invalid JSON: {exc}{detail}")
         if not isinstance(payload, dict) or not isinstance(payload.get("ok"), bool):
-            return self.failure("invalid_response", "MicroMeet returned an invalid response envelope")
+            return self.failure(
+                "invalid_response",
+                "MicroMeet returned an invalid response envelope",
+            )
         if completed.returncode != 0 and payload.get("ok") is True:
             detail = f": {stderr}" if stderr else ""
-            return self.failure("process_failed", f"MicroMeet exited with status {completed.returncode}{detail}")
+            return self.failure(
+                "process_failed",
+                f"MicroMeet exited with status {completed.returncode}{detail}",
+            )
         return payload
 
     @staticmethod

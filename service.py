@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import deque
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from .messages import ProjectionError
 from .runner import MmClient, RuntimeSettings
@@ -74,9 +75,7 @@ class MicroMeetService:
             line = await process.stdout.readline()
             if not line:
                 await process.wait()
-                raise ServiceError(
-                    f"MicroMeet inbox watcher exited{self.diagnostic_suffix()}"
-                )
+                raise ServiceError(f"MicroMeet inbox watcher exited{self.diagnostic_suffix()}")
             if len(line) > 1_048_576:
                 raise ProjectionError("watch notice exceeded the 1 MiB line limit")
             try:
@@ -164,7 +163,7 @@ class MicroMeetService:
         process.terminate()
         try:
             await asyncio.wait_for(process.wait(), timeout=5.0)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             process.kill()
             await process.wait()
 
