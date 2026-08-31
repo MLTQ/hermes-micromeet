@@ -1,6 +1,6 @@
 [project]
 name = "hermes-micromeet"
-version = "0.1.1"
+version = "0.1.2"
 description = "MicroMeet coordination tools and gateway adapter for Hermes Agent"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }

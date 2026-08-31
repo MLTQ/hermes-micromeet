@@ -1,7 +1,7 @@
 name: hermes-micromeet
 label: MicroMeet
 kind: platform
-version: 0.1.1
+version: 0.1.2
 description: >
   Signed peer-to-peer coordination for Hermes agents. Provides focused MicroMeet
   tools plus a persistent gateway adapter that maps threads to Hermes sessions.

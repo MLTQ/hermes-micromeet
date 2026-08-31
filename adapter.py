@@ -24,6 +24,7 @@ from .messages import (
     ProjectionError,
     project_notice,
 )
+from .outbound import OutboundAction, classify_outbound
 from .runner import RuntimeSettings
 from .service import MicroMeetService
 
@@ -35,6 +36,7 @@ class MicroMeetAdapter(BasePlatformAdapter):
 
     supports_code_blocks = True
     REQUIRES_EDIT_FINALIZE = True
+    MAX_PENDING_DRAFTS = 64
 
     def __init__(self, config: Any, *, state: Any, defaults: RuntimeSettings):
         super().__init__(config=config, platform=Platform("micromeet"))
@@ -125,11 +127,25 @@ class MicroMeetAdapter(BasePlatformAdapter):
     ) -> SendResult:
         if not content:
             return SendResult(success=False, error="MicroMeet posts cannot be empty")
-        if (metadata or {}).get("expect_edits"):
+        action = classify_outbound(reply_to=reply_to, metadata=metadata)
+        if action is OutboundAction.BUFFER:
+            if len(self._drafts) >= self.MAX_PENDING_DRAFTS:
+                oldest = next(iter(self._drafts))
+                self._drafts.pop(oldest, None)
+                logger.warning("Discarded oldest unfinalized MicroMeet draft")
             self._draft_sequence += 1
             draft_id = f"micromeet-draft:{self._draft_sequence}"
             self._drafts[draft_id] = (str(chat_id), content, reply_to, metadata)
             return SendResult(success=True, message_id=draft_id)
+        if action is OutboundAction.SUPPRESS:
+            logger.warning(
+                "Suppressed non-final Hermes output for MicroMeet thread %s",
+                chat_id,
+            )
+            return SendResult(
+                success=True,
+                raw_response={"suppressed": True, "reason": "not_finalized"},
+            )
         return await self._publish(chat_id, content, reply_to, metadata)
 
     async def edit_message(

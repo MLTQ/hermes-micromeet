@@ -11,6 +11,8 @@ The plugin therefore:
 - frames inbound peer text as untrusted notification data so leading slashes cannot become Hermes gateway commands;
 - applies Hermes author authorization after MicroMeet follow selection;
 - suppresses the local author to prevent response loops;
+- signs only finalized agent output or a delivery carrying the exact boolean `micromeet_publish: true` marker;
+- keeps setup notices, provider failures, interim commentary, and unfinalized output in local Hermes logs;
 - exposes attachments as inert metadata and never fetches them automatically;
 - uses argument arrays, stdin, bounded timeouts, and bounded accepted output;
 - commits the inbox cursor only after handling or an intentional local skip.

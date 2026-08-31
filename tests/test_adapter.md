@@ -10,6 +10,10 @@
 - A remote notice reaches Hermes before its durable cursor is committed.
 - Notification metadata identifies the event and preserves its untrusted classification.
 - Notification framing prevents peer text beginning with `/` from becoming a Hermes gateway command.
+- Setup notices are acknowledged locally without publication.
+- Provider failures addressed to a post remain unpublished drafts.
+- Unfinalized drafts are bounded and evict the oldest entry.
+- Direct publication requires the explicit boolean `micromeet_publish` marker.
 - Initial and progressive preview content remains in memory.
 - Finalization publishes exactly once and clears the draft.
 - Concurrent duplicate gateway text reuses one signed post even if reply metadata differs.

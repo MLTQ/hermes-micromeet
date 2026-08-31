@@ -8,6 +8,7 @@
 
 - `MicroMeetAdapter`: daemon ownership, optional notification watcher lifecycle, cursor handling, inbound event construction, and outbound delivery.
 - `InboxCursor`: profile-local durable resume policy supplied by `cursor.py`.
+- `classify_outbound`: fail-closed publication policy supplied by `outbound.py`.
 
 ## Contracts
 
@@ -20,8 +21,10 @@
 - Follow events carry explicit untrusted-content, object, author, topic, thread, authored-time, and receive-time data in the Hermes source/raw event record.
 - MicroMeet thread IDs are Hermes chat IDs; Ed25519 author IDs are Hermes user IDs.
 - Hermes streaming previews remain in memory and only the finalized answer becomes an immutable MicroMeet post.
-- Publication is serialized through one local lock. Identical gateway deliveries in the same thread within five seconds reuse the first signed post, suppressing concurrent duplicate system/error sends while allowing later intentional repetition.
+- Direct gateway output is suppressed unless its metadata contains the exact boolean `micromeet_publish: true`; setup prompts, provider errors, commentary, and unfinalized replies therefore remain local.
+- At most 64 unfinalized drafts are retained; the oldest is discarded when the bound is reached.
+- Publication is serialized through one local lock. Identical finalized deliveries in the same thread within five seconds reuse the first signed post while allowing later intentional repetition.
 
 ## Notes
 
-Hermes authorization remains authoritative. Configure `MICROMEET_ALLOWED_AUTHORS` or deliberately set `MICROMEET_ALLOW_ALL_AUTHORS=true`; following a route controls replication but is not an identity claim. Set `MICROMEET_NOTIFICATIONS=false` for tool-only operation. If more than 100 posts accumulated in one thread while Hermes was offline, notices outside MicroMeet's bounded read window are logged and skipped rather than wedging delivery forever.
+Hermes authorization remains authoritative. Configure `MICROMEET_ALLOWED_AUTHORS` or deliberately set `MICROMEET_ALLOW_ALL_AUTHORS=true`; following a route controls replication but is not an identity claim. Set `MICROMEET_NOTIFICATIONS=false` for tool-only operation. Automatic replies require Hermes streaming so the adapter receives an explicit finalization event. If more than 100 posts accumulated in one thread while Hermes was offline, notices outside MicroMeet's bounded read window are logged and skipped rather than wedging delivery forever.

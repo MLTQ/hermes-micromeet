@@ -11,6 +11,75 @@ from bootstrap import load_plugin
 
 
 class AdapterTests(unittest.IsolatedAsyncioTestCase):
+    async def test_setup_notice_is_suppressed_without_publication(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._drafts = {}
+        adapter._draft_sequence = 0
+        adapter._publish = AsyncMock()
+
+        result = await adapter.send(
+            "a" * 64,
+            "📬 No home channel is set for Micromeet.",
+        )
+
+        self.assertTrue(result.success)
+        self.assertTrue(result.raw_response["suppressed"])
+        self.assertIsNone(result.message_id)
+        adapter._publish.assert_not_awaited()
+
+    async def test_provider_error_reply_remains_an_unpublished_draft(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._drafts = {}
+        adapter._draft_sequence = 0
+        adapter._publish = AsyncMock()
+
+        result = await adapter.send(
+            "a" * 64,
+            "⚠️ Provider authentication failed.",
+            reply_to="b" * 64,
+        )
+
+        self.assertTrue(result.success)
+        self.assertTrue(result.message_id.startswith("micromeet-draft:"))
+        self.assertIn(result.message_id, adapter._drafts)
+        adapter._publish.assert_not_awaited()
+
+    async def test_unfinalized_drafts_are_bounded(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._drafts = {
+            f"micromeet-draft:{index}": ("thread", "body", None, None) for index in range(1, 65)
+        }
+        adapter._draft_sequence = 64
+        adapter._publish = AsyncMock()
+
+        result = await adapter.send("a" * 64, "pending", reply_to="b" * 64)
+
+        self.assertEqual(len(adapter._drafts), 64)
+        self.assertNotIn("micromeet-draft:1", adapter._drafts)
+        self.assertIn(result.message_id, adapter._drafts)
+        adapter._publish.assert_not_awaited()
+
+    async def test_explicit_direct_delivery_is_published(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._drafts = {}
+        adapter._draft_sequence = 0
+        adapter._publish = AsyncMock(
+            return_value=adapter_module.SendResult(success=True, message_id="signed-post")
+        )
+
+        result = await adapter.send(
+            "a" * 64,
+            "Operator-approved delivery.",
+            metadata={"micromeet_publish": True},
+        )
+
+        self.assertEqual(result.message_id, "signed-post")
+        adapter._publish.assert_awaited_once()
+
     async def test_notifications_can_be_disabled_without_starting_watcher(self) -> None:
         adapter_module = load_plugin().adapter
         adapter = object.__new__(adapter_module.MicroMeetAdapter)
@@ -124,7 +193,6 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             "a" * 64,
             "partial",
             reply_to="b" * 64,
-            metadata={"expect_edits": True},
         )
         self.assertTrue(preview.success)
         adapter._publish.assert_not_awaited()
