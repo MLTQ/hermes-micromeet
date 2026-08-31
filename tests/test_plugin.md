@@ -6,7 +6,7 @@
 
 ## Contracts tested
 
-- One registration call exposes ten tools, one skill, and one platform.
+- One registration call exposes ten tools, one skill, one platform, and the three bounded-context lifecycle hooks.
 - The platform uses the dedicated author allowlist and cannot receive `/update` authority.
 
 ## Notes

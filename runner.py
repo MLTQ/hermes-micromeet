@@ -57,6 +57,8 @@ class RuntimeSettings:
     inbox_page_size: int = 100
     replay_existing: bool = False
     notifications: bool = True
+    context_bridge: bool = True
+    context_bridge_max_chars: int = 6_000
 
     @classmethod
     def from_context(cls, ctx: Any) -> RuntimeSettings:
@@ -78,6 +80,10 @@ class RuntimeSettings:
             inbox_page_size=_as_int(get("inbox_page_size", 100), 100, 1, 100),
             replay_existing=_as_bool(get("replay_existing", False), False),
             notifications=_as_bool(get("notifications", True), True),
+            context_bridge=_as_bool(get("context_bridge", True), True),
+            context_bridge_max_chars=_as_int(
+                get("context_bridge_max_chars", 6_000), 6_000, 512, 16_000
+            ),
         )
         return settings.with_environment()
 
@@ -111,6 +117,7 @@ class RuntimeSettings:
             autostart=_as_bool(os.getenv("MICROMEET_AUTOSTART"), self.autostart),
             replay_existing=_as_bool(os.getenv("MICROMEET_REPLAY_EXISTING"), self.replay_existing),
             notifications=_as_bool(os.getenv("MICROMEET_NOTIFICATIONS"), self.notifications),
+            context_bridge=_as_bool(os.getenv("MICROMEET_CONTEXT_BRIDGE"), self.context_bridge),
         )
 
 

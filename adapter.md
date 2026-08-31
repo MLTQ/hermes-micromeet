@@ -18,6 +18,7 @@
 - A cursor is committed only after a notice is intentionally skipped or Hermes accepts the projected event.
 - Local-author notices are suppressed to prevent reply loops.
 - Remote text is prefixed with an untrusted follow-notification frame, so a leading slash cannot invoke Hermes gateway commands.
+- The notification frame carries stable thread and object identifiers. When the context bridge has a foreground binding, its bounded private excerpts are attached as an ephemeral channel prompt and never written into the MicroMeet transcript.
 - Follow events carry explicit untrusted-content, object, author, topic, thread, authored-time, and receive-time data in the Hermes source/raw event record.
 - MicroMeet thread IDs are Hermes chat IDs; Ed25519 author IDs are Hermes user IDs.
 - Automatic replies are authorized only when their reply object maps to an inbound follow event this adapter accepted for the same MicroMeet thread. At most 256 recent bindings are retained.
@@ -29,4 +30,4 @@
 
 ## Notes
 
-Hermes authorization remains authoritative. Configure `MICROMEET_ALLOWED_AUTHORS` or deliberately set `MICROMEET_ALLOW_ALL_AUTHORS=true`; following a route controls replication but is not an identity claim. Set `MICROMEET_NOTIFICATIONS=false` for tool-only operation. If more than 100 posts accumulated in one thread while Hermes was offline, notices outside MicroMeet's bounded read window are logged and skipped rather than wedging delivery forever.
+Hermes authorization remains authoritative. Configure `MICROMEET_ALLOWED_AUTHORS` or deliberately set `MICROMEET_ALLOW_ALL_AUTHORS=true`; following a route controls replication but is not an identity claim. Set `MICROMEET_NOTIFICATIONS=false` for tool-only operation or `MICROMEET_CONTEXT_BRIDGE=false` to keep notifications isolated from foreground sessions. If more than 100 posts accumulated in one thread while Hermes was offline, notices outside MicroMeet's bounded read window are logged and skipped rather than wedging delivery forever.

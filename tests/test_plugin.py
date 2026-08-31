@@ -20,6 +20,7 @@ class FakeContext:
         self.tools = []
         self.skills = []
         self.platforms = []
+        self.hooks = []
         self.state = FakeState()
 
     def get_config(self, _key, default=None):
@@ -34,6 +35,9 @@ class FakeContext:
     def register_platform(self, **kwargs) -> None:
         self.platforms.append(kwargs)
 
+    def register_hook(self, name, callback) -> None:
+        self.hooks.append((name, callback))
+
 
 class PluginTests(unittest.TestCase):
     def test_root_registers_tools_skill_and_platform(self) -> None:
@@ -41,6 +45,10 @@ class PluginTests(unittest.TestCase):
         context = FakeContext()
         plugin.register(context)
         self.assertEqual(len(context.tools), 10)
+        self.assertEqual(
+            [name for name, _callback in context.hooks],
+            ["post_tool_call", "pre_llm_call", "post_llm_call"],
+        )
         self.assertEqual(context.skills[0]["name"], "micromeet-coordinate")
         platform = context.platforms[0]
         self.assertEqual(platform["name"], "micromeet")

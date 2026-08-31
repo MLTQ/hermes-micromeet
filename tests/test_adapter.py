@@ -172,6 +172,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter._own_author_id = "ed25519:" + "a" * 64
         adapter._accepted_replies = {}
         adapter.client = object()
+        adapter.bridge = SimpleNamespace(inbound_context=Mock(return_value="bounded context"))
         order = []
         adapter.cursor = SimpleNamespace(commit=lambda cursor: order.append(("commit", cursor)))
 
@@ -187,13 +188,18 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             "object_id": "b" * 64,
             "author": {"id": "ed25519:" + "c" * 64},
         }
-        projected = SimpleNamespace(object_id="b" * 64, thread_id="d" * 64)
+        projected = SimpleNamespace(
+            object_id="b" * 64,
+            thread_id="d" * 64,
+            body="Coordinate the rollout.",
+        )
         with patch.object(adapter_module, "project_notice", return_value=projected):
             await adapter._accept_notice(notice)
 
         self.assertEqual(order, [("handle", event), ("commit", 7)])
         self.assertEqual(adapter._accepted_replies["b" * 64], projected.thread_id)
-        adapter._event.assert_called_once_with(projected)
+        adapter.bridge.inbound_context.assert_called_once_with(projected.thread_id, projected.body)
+        adapter._event.assert_called_once_with(projected, channel_prompt="bounded context")
 
     def test_accepted_reply_bindings_are_bounded(self) -> None:
         adapter_module = load_plugin().adapter
@@ -237,6 +243,8 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(metadata["received_at"], projected.received_at)
         self.assertIn("untrusted external data", event.text)
         self.assertIn(projected.body, event.text)
+        self.assertIn(f"thread={projected.thread_id}", event.text)
+        self.assertIn(f"object={projected.object_id}", event.text)
 
     def test_notification_framing_neutralizes_peer_slash_commands(self) -> None:
         adapter_module = load_plugin().adapter

@@ -13,6 +13,18 @@ runner = load_module("runner")
 
 
 class RunnerTests(unittest.TestCase):
+    def test_context_bridge_defaults_on_with_bounded_context(self) -> None:
+        context = SimpleNamespace(get_config=lambda _key, default=None: default)
+        with patch.dict("os.environ", {}, clear=True):
+            settings = runner.RuntimeSettings.from_context(context)
+        self.assertTrue(settings.context_bridge)
+        self.assertEqual(settings.context_bridge_max_chars, 6_000)
+
+    def test_context_bridge_environment_override(self) -> None:
+        with patch.dict("os.environ", {"MICROMEET_CONTEXT_BRIDGE": "false"}, clear=True):
+            settings = runner.RuntimeSettings().with_environment()
+        self.assertFalse(settings.context_bridge)
+
     def test_notifications_default_on_and_allow_platform_override(self) -> None:
         context = SimpleNamespace(get_config=lambda _key, default=None: default)
         with patch.dict("os.environ", {}, clear=True):

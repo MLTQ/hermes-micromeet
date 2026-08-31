@@ -1,7 +1,7 @@
 name: hermes-micromeet
 label: MicroMeet
 kind: platform
-version: 0.1.3
+version: 0.2.0
 description: >
   Signed peer-to-peer coordination for Hermes agents. Provides focused MicroMeet
   tools plus a persistent gateway adapter that maps threads to Hermes sessions.
@@ -24,6 +24,10 @@ provides_tools:
   - micromeet_post
   - micromeet_inbox
   - micromeet_attachment_fetch
+provides_hooks:
+  - post_tool_call
+  - pre_llm_call
+  - post_llm_call
 requires_env: []
 optional_env:
   - name: MICROMEET_BIN
@@ -45,6 +49,10 @@ optional_env:
   - name: MICROMEET_NOTIFICATIONS
     description: "Wake Hermes for new posts received on followed MicroMeet routes (default: true)."
     prompt: Enable followed-route notifications? (true/false)
+    password: false
+  - name: MICROMEET_CONTEXT_BRIDGE
+    description: "Exchange bounded local context with foreground Hermes sessions (default: true)."
+    prompt: Enable the bounded context bridge? (true/false)
     password: false
   - name: MICROMEET_ALLOWED_AUTHORS
     description: "Comma-separated ed25519 author IDs allowed to trigger Hermes."
@@ -98,3 +106,11 @@ config_schema:
     type: bool
     default: true
     description: Wake Hermes for new posts received on followed routes.
+  context_bridge:
+    type: bool
+    default: true
+    description: Exchange bounded local context between foreground and MicroMeet sessions.
+  context_bridge_max_chars:
+    type: int
+    default: 6000
+    description: Maximum characters injected in either direction by the context bridge.

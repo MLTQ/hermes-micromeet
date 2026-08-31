@@ -8,8 +8,9 @@
 
 - Follow notifications may be disabled without starting a watcher.
 - A remote notice reaches Hermes before its durable cursor is committed.
+- A remote notice receives bounded bridge context as an ephemeral channel prompt.
 - Accepted inbound object-to-thread reply bindings are retained with a fixed upper bound.
-- Notification metadata identifies the event and preserves its untrusted classification.
+- Notification metadata and the stable text frame identify the thread/object event and preserve its untrusted classification.
 - Notification framing prevents peer text beginning with `/` from becoming a Hermes gateway command.
 - Setup notices are acknowledged locally without publication.
 - Provider failures addressed to a post remain unpublished drafts.

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .adapter import MicroMeetAdapter
+from .bridge import ContextBridge
 from .runner import MmClient, RuntimeSettings
 from .tools import register_tools
 
@@ -16,7 +17,14 @@ def register(ctx: Any) -> None:
     """Register focused tools, the coordination skill, and the platform adapter."""
     defaults = RuntimeSettings.from_context(ctx)
     tool_client = MmClient(defaults)
+    bridge = ContextBridge(
+        enabled=defaults.context_bridge,
+        max_context_chars=defaults.context_bridge_max_chars,
+    )
     register_tools(ctx, tool_client)
+    ctx.register_hook("post_tool_call", bridge.on_post_tool_call)
+    ctx.register_hook("pre_llm_call", bridge.on_pre_llm_call)
+    ctx.register_hook("post_llm_call", bridge.on_post_llm_call)
 
     skill_path = Path(__file__).parent / "skills" / "coordinate" / "SKILL.md"
     ctx.register_skill(
@@ -28,7 +36,12 @@ def register(ctx: Any) -> None:
     ctx.register_platform(
         name="micromeet",
         label="MicroMeet",
-        adapter_factory=lambda cfg: MicroMeetAdapter(cfg, state=ctx.state, defaults=defaults),
+        adapter_factory=lambda cfg: MicroMeetAdapter(
+            cfg,
+            state=ctx.state,
+            defaults=defaults,
+            bridge=bridge,
+        ),
         check_fn=tool_client.binary_available,
         validate_config=lambda cfg: MmClient(defaults.for_platform(cfg)).binary_available(),
         is_connected=lambda cfg: MmClient(defaults.for_platform(cfg)).binary_available(),
