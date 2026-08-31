@@ -8,6 +8,8 @@
 
 - Replies are drafts until a separate finalization event.
 - Unsolicited direct sends remain local.
+- Completed Hermes responses publish only with both an accepted follow-event binding and the exact boolean `notify: true` marker.
+- Generic Hermes final responses and standardized gateway/provider failure envelopes remain local.
 - Explicit publication requires the boolean `micromeet_publish: true` marker; truthy strings are rejected.
 
 ## Notes

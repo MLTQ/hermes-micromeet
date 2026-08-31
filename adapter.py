@@ -37,6 +37,7 @@ class MicroMeetAdapter(BasePlatformAdapter):
     supports_code_blocks = True
     REQUIRES_EDIT_FINALIZE = True
     MAX_PENDING_DRAFTS = 64
+    MAX_ACCEPTED_REPLIES = 256
 
     def __init__(self, config: Any, *, state: Any, defaults: RuntimeSettings):
         super().__init__(config=config, platform=Platform("micromeet"))
@@ -53,6 +54,7 @@ class MicroMeetAdapter(BasePlatformAdapter):
         self._watch_task: asyncio.Task | None = None
         self._drafts: dict[str, tuple[str, str, str | None, dict[str, Any] | None]] = {}
         self._draft_sequence = 0
+        self._accepted_replies: dict[str, str] = {}
         self._recent_deliveries: dict[str, tuple[float, SendResult]] = {}
         self._delivery_lock = asyncio.Lock()
         self._stopping = False
@@ -115,6 +117,7 @@ class MicroMeetAdapter(BasePlatformAdapter):
             await asyncio.gather(watch_task, return_exceptions=True)
         await self.service.stop()
         self._drafts.clear()
+        self._accepted_replies.clear()
         self._recent_deliveries.clear()
         self._mark_disconnected()
 
@@ -127,7 +130,15 @@ class MicroMeetAdapter(BasePlatformAdapter):
     ) -> SendResult:
         if not content:
             return SendResult(success=False, error="MicroMeet posts cannot be empty")
-        action = classify_outbound(reply_to=reply_to, metadata=metadata)
+        accepted_follow_reply = bool(
+            reply_to and self._accepted_replies.get(str(reply_to)) == str(chat_id)
+        )
+        action = classify_outbound(
+            content=content,
+            reply_to=reply_to,
+            metadata=metadata,
+            accepted_follow_reply=accepted_follow_reply,
+        )
         if action is OutboundAction.BUFFER:
             if len(self._drafts) >= self.MAX_PENDING_DRAFTS:
                 oldest = next(iter(self._drafts))
@@ -269,8 +280,16 @@ class MicroMeetAdapter(BasePlatformAdapter):
         if projected is None:
             self.cursor.commit(cursor)
             return
+        self._remember_accepted_reply(projected.object_id, projected.thread_id)
         await self.handle_message(self._event(projected))
         self.cursor.commit(cursor)
+
+    def _remember_accepted_reply(self, object_id: str, thread_id: str) -> None:
+        """Bind later gateway output to an accepted MicroMeet follow event."""
+        self._accepted_replies[str(object_id)] = str(thread_id)
+        while len(self._accepted_replies) > self.MAX_ACCEPTED_REPLIES:
+            oldest = next(iter(self._accepted_replies))
+            self._accepted_replies.pop(oldest, None)
 
     def _event(self, message: ProjectedMessage) -> MessageEvent:
         source = self.build_source(

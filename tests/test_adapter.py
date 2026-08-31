@@ -16,6 +16,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter = object.__new__(adapter_module.MicroMeetAdapter)
         adapter._drafts = {}
         adapter._draft_sequence = 0
+        adapter._accepted_replies = {}
         adapter._publish = AsyncMock()
 
         result = await adapter.send(
@@ -33,6 +34,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter = object.__new__(adapter_module.MicroMeetAdapter)
         adapter._drafts = {}
         adapter._draft_sequence = 0
+        adapter._accepted_replies = {"b" * 64: "a" * 64}
         adapter._publish = AsyncMock()
 
         result = await adapter.send(
@@ -46,6 +48,65 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(result.message_id, adapter._drafts)
         adapter._publish.assert_not_awaited()
 
+    async def test_completed_accepted_follow_reply_is_published(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._drafts = {}
+        adapter._draft_sequence = 0
+        adapter._accepted_replies = {"b" * 64: "a" * 64}
+        adapter._publish = AsyncMock(
+            return_value=adapter_module.SendResult(success=True, message_id="signed-post")
+        )
+
+        result = await adapter.send(
+            "a" * 64,
+            "Acknowledged; coordination is live.",
+            reply_to="b" * 64,
+            metadata={"notify": True},
+        )
+
+        self.assertEqual(result.message_id, "signed-post")
+        adapter._publish.assert_awaited_once()
+
+    async def test_unrelated_completed_response_is_suppressed(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._drafts = {}
+        adapter._draft_sequence = 0
+        adapter._accepted_replies = {"c" * 64: "a" * 64}
+        adapter._publish = AsyncMock()
+
+        result = await adapter.send(
+            "a" * 64,
+            "This belongs to another session.",
+            reply_to="b" * 64,
+            metadata={"notify": True},
+        )
+
+        self.assertTrue(result.success)
+        self.assertTrue(result.raw_response["suppressed"])
+        adapter._publish.assert_not_awaited()
+
+    async def test_completed_provider_error_is_suppressed(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._drafts = {}
+        adapter._draft_sequence = 0
+        adapter._accepted_replies = {"b" * 64: "a" * 64}
+        adapter._publish = AsyncMock()
+
+        result = await adapter.send(
+            "a" * 64,
+            "⚠️ Provider authentication failed: invalid token",
+            reply_to="b" * 64,
+            metadata={"notify": True},
+        )
+
+        self.assertTrue(result.success)
+        self.assertTrue(result.raw_response["suppressed"])
+        self.assertEqual(adapter._drafts, {})
+        adapter._publish.assert_not_awaited()
+
     async def test_unfinalized_drafts_are_bounded(self) -> None:
         adapter_module = load_plugin().adapter
         adapter = object.__new__(adapter_module.MicroMeetAdapter)
@@ -53,6 +114,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             f"micromeet-draft:{index}": ("thread", "body", None, None) for index in range(1, 65)
         }
         adapter._draft_sequence = 64
+        adapter._accepted_replies = {"b" * 64: "a" * 64}
         adapter._publish = AsyncMock()
 
         result = await adapter.send("a" * 64, "pending", reply_to="b" * 64)
@@ -67,6 +129,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter = object.__new__(adapter_module.MicroMeetAdapter)
         adapter._drafts = {}
         adapter._draft_sequence = 0
+        adapter._accepted_replies = {}
         adapter._publish = AsyncMock(
             return_value=adapter_module.SendResult(success=True, message_id="signed-post")
         )
@@ -107,6 +170,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter_module = load_plugin().adapter
         adapter = object.__new__(adapter_module.MicroMeetAdapter)
         adapter._own_author_id = "ed25519:" + "a" * 64
+        adapter._accepted_replies = {}
         adapter.client = object()
         order = []
         adapter.cursor = SimpleNamespace(commit=lambda cursor: order.append(("commit", cursor)))
@@ -123,12 +187,28 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             "object_id": "b" * 64,
             "author": {"id": "ed25519:" + "c" * 64},
         }
-        projected = object()
+        projected = SimpleNamespace(object_id="b" * 64, thread_id="d" * 64)
         with patch.object(adapter_module, "project_notice", return_value=projected):
             await adapter._accept_notice(notice)
 
         self.assertEqual(order, [("handle", event), ("commit", 7)])
+        self.assertEqual(adapter._accepted_replies["b" * 64], projected.thread_id)
         adapter._event.assert_called_once_with(projected)
+
+    def test_accepted_reply_bindings_are_bounded(self) -> None:
+        adapter_module = load_plugin().adapter
+        adapter = object.__new__(adapter_module.MicroMeetAdapter)
+        adapter._accepted_replies = {}
+
+        for index in range(adapter.MAX_ACCEPTED_REPLIES + 1):
+            adapter._remember_accepted_reply(f"object-{index}", f"thread-{index}")
+
+        self.assertEqual(len(adapter._accepted_replies), adapter.MAX_ACCEPTED_REPLIES)
+        self.assertNotIn("object-0", adapter._accepted_replies)
+        self.assertEqual(
+            adapter._accepted_replies[f"object-{adapter.MAX_ACCEPTED_REPLIES}"],
+            f"thread-{adapter.MAX_ACCEPTED_REPLIES}",
+        )
 
     def test_follow_notification_metadata_is_explicit_and_untrusted(self) -> None:
         adapter_module = load_plugin().adapter
@@ -185,6 +265,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
         adapter = object.__new__(adapter_module.MicroMeetAdapter)
         adapter._drafts = {}
         adapter._draft_sequence = 0
+        adapter._accepted_replies = {"b" * 64: "a" * 64}
         adapter._publish = AsyncMock(
             return_value=adapter_module.SendResult(success=True, message_id="signed-post")
         )
